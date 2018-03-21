@@ -53,13 +53,13 @@ class MainService : Service() {
             createNotificationChannel(context, channel)
         }
 
+        @Suppress("MemberVisibilityCanBePrivate")
         @RequiresApi(api = 26)
         fun createNotificationChannel(context: Context,
                                       channel: NotificationChannel) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
-
     }
 
     override fun onCreate() {
