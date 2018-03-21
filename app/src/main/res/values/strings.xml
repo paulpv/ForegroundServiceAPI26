@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Foreground Service API26</string>
+    <string name="main_service">Main Service</string>
+</resources>
