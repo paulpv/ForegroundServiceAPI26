@@ -8,6 +8,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.os.Parcelable
 import android.support.annotation.RequiresApi
@@ -24,6 +25,7 @@ class MainService : Service() {
             val intent = Intent(context, MainService::class.java)
             intent.putExtra(EXTRA_NOTIFICATION_REQUEST_CODE, requestCode)
             intent.putExtra(EXTRA_NOTIFICATION, notification)
+            Handler().postDelayed({ stop(context) }, 500)
             return startService(context, intent)
         }
 
@@ -79,7 +81,7 @@ class MainService : Service() {
                         if (notification is Notification) {
                             if (extras.containsKey(EXTRA_NOTIFICATION_REQUEST_CODE)) {
                                 val requestCode = extras.getInt(EXTRA_NOTIFICATION_REQUEST_CODE)
-                                startForeground(requestCode, notification)
+                                Handler().postDelayed({ startForeground(requestCode, notification) }, 3000)
                             }
                         }
                     }
