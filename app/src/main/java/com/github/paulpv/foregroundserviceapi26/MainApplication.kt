@@ -36,9 +36,9 @@ class MainApplication : Application() {
 
         if (Build.VERSION.SDK_INT >= 26) {
             val appName = getString(R.string.app_name)
-            val channelName = appName + " channel name"
+            val channelName = "$appName channel name"
             val channelImportance = NotificationManager.IMPORTANCE_LOW
-            val channelDescription = appName + " channel description"
+            val channelDescription = "$appName channel description"
 
             MainService.createNotificationChannel(this,
                     NOTIFICATION_CHANNEL_ID,
