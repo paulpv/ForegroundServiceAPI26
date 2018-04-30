@@ -14,9 +14,29 @@
         android:layout_height="wrap_content"
         android:text="@string/main_service"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        />
+
+    <CheckBox
+        android:id="@+id/checkRepro"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/repro"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/switchMainService"
+        />
+
+    <CheckBox
+        android:id="@+id/checkWorkaround"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/workaround"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/checkRepro"
         />
 
 </android.support.constraint.ConstraintLayout>

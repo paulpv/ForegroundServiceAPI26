@@ -28,6 +28,10 @@ class MainApplication : Application() {
 
     var isNotificationShowing: Boolean = false
         private set
+    var isRepro: Boolean = true
+        internal set
+    var isWorkaround: Boolean = true
+        internal set
 
     @SuppressLint("InlinedApi")
     override fun onCreate() {
@@ -72,11 +76,11 @@ class MainApplication : Application() {
 
     fun showNotification(show: Boolean) {
         if (show) {
-            MainService.showNotification(this, NOTIFICATION_REQUEST_CODE, notification)
+            MainService.showNotification(this, NOTIFICATION_REQUEST_CODE, notification, isRepro, isWorkaround)
             isNotificationShowing = true
         } else {
             isNotificationShowing = false
-            MainService.stop(this)
+            MainService.stop(this, isWorkaround)
         }
     }
 }

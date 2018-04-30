@@ -14,6 +14,12 @@ import android.os.Parcelable
 import android.support.annotation.RequiresApi
 import android.util.Log
 
+/**
+ * Repro and workaround for https://issuetracker.google.com/issues/76112072
+ *
+ * @link https://developer.android.com/about/versions/oreo/background
+ *
+ */
 class MainService : Service() {
     companion object {
         private const val TAG = "MainService"
@@ -21,20 +27,32 @@ class MainService : Service() {
         const val EXTRA_NOTIFICATION_REQUEST_CODE = "EXTRA_NOTIFICATION_REQUEST_CODE"
         const val EXTRA_NOTIFICATION = "EXTRA_NOTIFICATION"
 
-        fun showNotification(context: Context, requestCode: Int, notification: Notification): Boolean {
+        fun showNotification(context: Context, requestCode: Int, notification: Notification, repro: Boolean, workaround: Boolean): Boolean {
             val intent = Intent(context, MainService::class.java)
             intent.putExtra(EXTRA_NOTIFICATION_REQUEST_CODE, requestCode)
             intent.putExtra(EXTRA_NOTIFICATION, notification)
-            Handler().postDelayed({ stop(context) }, 500)
-            return startService(context, intent)
+            intent.putExtra("repro", repro)
+            return startService(context, intent, repro, workaround)
         }
 
-        fun stop(context: Context) {
+        fun stop(context: Context, workaround: Boolean) {
             val intent = Intent(context, MainService::class.java)
-            context.stopService(intent)
+            stopService(context, intent, workaround)
         }
 
-        private fun startService(context: Context, intent: Intent): Boolean {
+        /**
+         * @see android.support.v4.content.ContextCompat#startForegroundService(android.content.Context, android.content.Intent)
+         */
+        @Suppress("MemberVisibilityCanBePrivate")
+        fun startService(context: Context, intent: Intent, repro: Boolean, workaround: Boolean): Boolean {
+
+            if (repro) {
+                HANDLER.postDelayed({
+                    Log.w(TAG, "startService will repro https://issuetracker.google.com/issues/76112072 by stopping service before it can call startForeground")
+                    stop(context, workaround)
+                }, 500)
+            }
+
             //
             // Similar to ContextCompat.startForegroundService(context, intent)
             //
@@ -44,6 +62,37 @@ class MainService : Service() {
                 context.startService(intent)
             }
             return componentName != null
+        }
+
+        /**
+         * Per https://developer.android.com/reference/android/content/Context#startForegroundService(android.content.Intent)
+         * "The service is given an amount of time comparable to the ANR interval to do this, otherwise the system will
+         * automatically stop the service and declare the app ANR."
+         *
+         * Per https://developer.android.com/training/articles/perf-anr#anr
+         * "In Android, application responsiveness is monitored by the Activity Manager and Window Manager system services.
+         * Android will display the ANR dialog for a particular application when it detects one of the following conditions:
+         *   * No response to an input event (such as key press or screen touch events) within 5 seconds."
+         */
+        @Suppress("MemberVisibilityCanBePrivate")
+        const val APPLICATION_NOT_RESPONDING_TIMEOUT_MILLIS = 5000
+
+        private val PENDING_STOP_SERVICE = mutableMapOf<Intent, Runnable>()
+        private val HANDLER = Handler()
+
+        @Suppress("MemberVisibilityCanBePrivate")
+        fun stopService(context: Context, intent: Intent, workaround: Boolean) {
+            if (workaround) {
+                var runnable = PENDING_STOP_SERVICE[intent]
+                if (runnable != null) {
+                    HANDLER.removeCallbacks(runnable)
+                }
+                runnable = Runnable { context.stopService(intent) }
+                PENDING_STOP_SERVICE[intent] = runnable
+                HANDLER.postDelayed(runnable, (APPLICATION_NOT_RESPONDING_TIMEOUT_MILLIS + 250).toLong())
+            } else {
+                context.stopService(intent)
+            }
         }
 
         @RequiresApi(api = 26)
@@ -81,7 +130,16 @@ class MainService : Service() {
                         if (notification is Notification) {
                             if (extras.containsKey(EXTRA_NOTIFICATION_REQUEST_CODE)) {
                                 val requestCode = extras.getInt(EXTRA_NOTIFICATION_REQUEST_CODE)
-                                Handler().postDelayed({ startForeground(requestCode, notification) }, 3000)
+                                val repro = extras.getBoolean("repro")
+                                if (repro) {
+                                    Log.w(TAG, "onStartCommand will repro https://issuetracker.google.com/issues/76112072 by delaying startForeground")
+                                    HANDLER.postDelayed({
+                                        Log.w(TAG, "onStartCommand delayed startForeground")
+                                        startForeground(requestCode, notification)
+                                    }, 3000)
+                                } else {
+                                    startForeground(requestCode, notification)
+                                }
                             }
                         }
                     }
