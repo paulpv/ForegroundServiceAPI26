@@ -1,13 +1,15 @@
 package com.github.paulpv.foregroundserviceapi26
 
-import android.annotation.SuppressLint
 import android.app.Application
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Build
+import android.os.IBinder
 import android.support.v4.app.NotificationCompat.Builder
 import android.util.Log
 
@@ -28,12 +30,7 @@ class MainApplication : Application() {
 
     var isNotificationShowing: Boolean = false
         private set
-    var isRepro: Boolean = true
-        internal set
-    var isWorkaround: Boolean = true
-        internal set
 
-    @SuppressLint("InlinedApi")
     override fun onCreate() {
         Log.d(TAG, "+onCreate()")
         super.onCreate()
@@ -52,6 +49,9 @@ class MainApplication : Application() {
         }
 
         notification = createOngoingNotification(NOTIFICATION_REQUEST_CODE, R.drawable.ic_notification, "Content Text")
+
+        val intent = Intent(this, MainService::class.java)
+        bindService(intent, mainServiceConnection, Context.BIND_AUTO_CREATE)
 
         Log.d(TAG, "-onCreate()")
     }
@@ -74,13 +74,26 @@ class MainApplication : Application() {
                 .build()
     }
 
+    private var mainService: MainService? = null
+
+    private val mainServiceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, service: IBinder?) {
+            val binder = service as MainService.MainServiceBinder
+            mainService = binder.getService()
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            mainService = null
+        }
+    }
+
     fun showNotification(show: Boolean) {
         if (show) {
-            MainService.showNotification(this, NOTIFICATION_REQUEST_CODE, notification, isRepro, isWorkaround)
+            mainService?.startForeground(NOTIFICATION_REQUEST_CODE, notification)
             isNotificationShowing = true
         } else {
             isNotificationShowing = false
-            MainService.stop(this, isWorkaround)
+            mainService?.stopForeground(true)
         }
     }
 }

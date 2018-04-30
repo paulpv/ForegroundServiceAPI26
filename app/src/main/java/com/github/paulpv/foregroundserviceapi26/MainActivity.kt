@@ -24,12 +24,6 @@ class MainActivity : AppCompatActivity() {
         switchMainService.setOnCheckedChangeListener { _, isChecked ->
             mainApplication.showNotification(isChecked)
         }
-        checkRepro.setOnCheckedChangeListener { _, isChecked ->
-            mainApplication.isRepro = isChecked
-        }
-        checkWorkaround.setOnCheckedChangeListener { _, isChecked ->
-            mainApplication.isWorkaround = isChecked
-        }
     }
 
     override fun onResume() {
