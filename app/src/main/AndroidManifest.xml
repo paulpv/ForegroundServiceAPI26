@@ -23,7 +23,7 @@
         </activity>
 
         <service
-            android:name=".MainService"
+            android:name=".BoundService"
             android:enabled="true"
             android:exported="false"
             />

@@ -1,38 +1,50 @@
 package com.github.paulpv.foregroundserviceapi26
 
-import android.app.Application
-import android.app.Notification
-import android.app.NotificationManager
-import android.app.PendingIntent
+import android.app.*
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Build
 import android.os.IBinder
+import android.support.annotation.RequiresApi
 import android.support.v4.app.NotificationCompat.Builder
-import android.util.Log
 
 
 class MainApplication : Application() {
     companion object {
-        private const val TAG = "MainApplication"
-
         fun getMainApplication(context: Context): MainApplication {
             return context.applicationContext as MainApplication
         }
 
         private const val NOTIFICATION_REQUEST_CODE = 100
         private const val NOTIFICATION_CHANNEL_ID = "notification_channel_id"
+
+        @RequiresApi(api = 26)
+        private fun createNotificationChannel(context: Context,
+                                              id: String,
+                                              name: String,
+                                              importance: Int,
+                                              description: String) {
+            val channel = NotificationChannel(id, name, importance)
+            channel.description = description
+            createNotificationChannel(context, channel)
+        }
+
+        @RequiresApi(api = 26)
+        private fun createNotificationChannel(context: Context,
+                                              channel: NotificationChannel) {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
     }
 
-    private lateinit var notification: Notification
-
-    var isNotificationShowing: Boolean = false
-        private set
+    private var notification: Notification? = null
+    private var boundService: Service? = null
+    val isNotificationShowing
+        get() = notification != null
 
     override fun onCreate() {
-        Log.d(TAG, "+onCreate()")
         super.onCreate()
 
         if (Build.VERSION.SDK_INT >= 26) {
@@ -41,19 +53,24 @@ class MainApplication : Application() {
             val channelImportance = NotificationManager.IMPORTANCE_LOW
             val channelDescription = "$appName channel description"
 
-            MainService.createNotificationChannel(this,
+            createNotificationChannel(this,
                     NOTIFICATION_CHANNEL_ID,
                     channelName,
                     channelImportance,
                     channelDescription)
         }
 
-        notification = createOngoingNotification(NOTIFICATION_REQUEST_CODE, R.drawable.ic_notification, "Content Text")
+        bindService(Intent(this, BoundService::class.java), object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName, service: IBinder?) {
+                val binder = service as BoundService.NotificationServiceBinder
+                boundService = binder.getService()
+            }
 
-        val intent = Intent(this, MainService::class.java)
-        bindService(intent, mainServiceConnection, Context.BIND_AUTO_CREATE)
-
-        Log.d(TAG, "-onCreate()")
+            override fun onServiceDisconnected(name: ComponentName?) {
+                showNotification(false)
+                boundService = null
+            }
+        }, Context.BIND_AUTO_CREATE)
     }
 
     private fun createOngoingNotification(requestCode: Int, icon: Int, text: String): Notification {
@@ -74,26 +91,16 @@ class MainApplication : Application() {
                 .build()
     }
 
-    private var mainService: MainService? = null
-
-    private val mainServiceConnection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName, service: IBinder?) {
-            val binder = service as MainService.MainServiceBinder
-            mainService = binder.getService()
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            mainService = null
-        }
-    }
-
     fun showNotification(show: Boolean) {
+        if (show == isNotificationShowing) {
+            return
+        }
         if (show) {
-            mainService?.startForeground(NOTIFICATION_REQUEST_CODE, notification)
-            isNotificationShowing = true
+            notification = createOngoingNotification(NOTIFICATION_REQUEST_CODE, R.drawable.ic_notification, "Content Text")
+            boundService?.startForeground(NOTIFICATION_REQUEST_CODE, notification)
         } else {
-            isNotificationShowing = false
-            mainService?.stopForeground(true)
+            boundService?.stopForeground(true)
+            notification = null
         }
     }
 }
